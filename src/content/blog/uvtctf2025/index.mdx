@@ -416,5 +416,39 @@ shell.php
 ![](./assets/web/domain%20info/Screenshot%202025-05-04%20132143.png)
 **Flag:** `UVT{M4l1c10us_Wh0_1s_C0mmand_4nd_upl0ad}`
 
-## [Android]
+## [Mobile-Android]
+![](./assets/mobile/task.png)
 
+### Goals
+---
+1. Understand how the Android application works
+2. Find the flag in the Android application
+3. Understand how the Android application is vulnerable to reverse engineering
+
+### Solution [Unintended]
+---
+1. First, I install the apk into the emulator i have and open it.
+![](./assets/mobile/open.png)
+2. I can see that the app is a simple app where It shows jokes and some info from UVT INFO.
+3. Next I decompile it with apktool and open the decompiled file ```libnative-lib.so``` with ghidra.
+4. I analyze the disassembled code to look for vulnerabilities or hardcoded values.
+5. In the function gethiddenflag() we can see a simple code inside
+```undefined8 Java_com_example_uvt_1ctf_12025_Utils_getHiddenFlag(long *param_1)
+
+{
+  void *__ptr;
+  undefined8 uVar1;
+  
+  __ptr = (void *)FUN_00100c70("91.99.1.179",0xa4fa,"/somebody-found-a-random-flag-path");
+  uVar1 = (**(code **)(*param_1 + 0x538))(param_1,__ptr);
+  free(__ptr);
+  return uVar1;
+}
+```
+6. We can see that the function is calling a function with the address 0x538 and passing the ip address and the path to it.
+7. But indeed we direct open the website (0xa4fa hex is 42234 in unicode) so directly open the website and we can see the flag inside the website.
+
+### Final Result
+---
+![](./assets/mobile/flag.png)
+**Flag:** `UVT{m0b1l3_.s0_m4y_c0nt4in_s3ns1tiv3_1nf0}`
