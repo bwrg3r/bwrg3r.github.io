@@ -53,7 +53,13 @@ The goal of this challenge is to exploit a vulnerability in the HTML renderer th
 2. So how to exploit this challenge? We know everytime when we input to long our prompt, it will cause token limit error and the model will not read through the prompt and causing jump over the AI filter layer.
 ```html
 -----------------------------------0-----------------------------------1-----------------------------------2-----------------------------------3-----------------------------------4-----------------------------------5-----------------------------------6-----------------------------------7-----------------------------------8-----------------------------------9<iframe src="/flag.txt" width="800" height="600"></iframe>-----------------------------------10-----------------------------------11-----------------------------------12-----------------------------------13-----------------------------------14-----------------------------------15-----------------------------------16-----------------------------------17-----------------------------------18-----------------------------------19-----------------------------------20-----------------------------------21-----------------------------------22-----------------------------------23-----------------------------------24-----------------------------------25```
-<a href="/assets/WEB/message.txt" download class="download-button">
+<a href="./assets/WEB/message.txt" download class="download-button">
   Download the prompt
 </a>
-3. 
+3. With the use of ```<iframe src="/flag.txt" width="800" height="600"></iframe>``` Also make the renderer run this html code and read the flag.txt
+4. Then we can see the flag.
+![image](./assets/WEB/image.png)
+
+### Final Result
+---
+**Flag:** `UMCS{dld_y0u_d0_pr0mpt_inj3ctl0n?}`
