@@ -109,17 +109,4 @@
     @apply transition-none!;
   }
 
-  .download-button {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    background-color: #3b82f6;
-    color: white;
-    border-radius: 0.25rem;
-    text-decoration: none;
-    margin: 1rem 0;
-  }
-
-  .download-button:hover {
-    background-color: #2563eb;
-  }
 }
