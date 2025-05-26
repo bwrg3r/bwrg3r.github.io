@@ -214,9 +214,9 @@ if __name__ == "__main__":
 5. Now we can login to the website using the password.
 6. Well in the page, we still need to insert something to read the flag.
 7. We can use the following SSTI payload to read the flag:
-   ```html
+```html
 {{ config.__class__.__init__.__globals__['os'].popen('cat /flag.txt').read() }}
-   ```
+```
 ![image](./assets/sekurenotes.png)
 8. Just choose one of them to read the flag.
 
